@@ -1,75 +1,66 @@
 
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { DashboardSidebar } from "@/components/layout/Sidebar";
-import { StatCard } from "@/components/dashboard/StatCard";
-import { ExpensesChart } from "@/components/dashboard/ExpensesChart";
-import { BudgetProgress } from "@/components/dashboard/BudgetProgress";
-import { SavingsGoals } from "@/components/dashboard/SavingsGoals";
-import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
-import { SpendingTrendsChart } from "@/components/dashboard/SpendingTrendsChart";
-import { Wallet, TrendingUp, PiggyBank, CreditCard } from "lucide-react";
+import React, { useRef } from "react";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import TestimonialCarousel from "@/components/TestimonialCarousel";
+import HeroSection from "@/components/home/HeroSection";
+import VideoTutorialSection from "@/components/home/VideoTutorialSection";
+import InstructionSection from "@/components/home/InstructionSection";
+import VideoCarousel from "@/components/VideoCarousel";
 
 const Index = () => {
+  const testimonialRef = useRef<HTMLDivElement>(null);
+  const tutorialRef = useRef<HTMLDivElement>(null);
+
+  // Function to scroll to testimonials section
+  const scrollToTestimonials = () => {
+    testimonialRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Function to scroll to tutorial section
+  const scrollToTutorial = () => {
+    tutorialRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gray-50">
-        <DashboardSidebar />
-        <div className="flex-1 p-6">
-          <header className="mb-8">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-3xl font-bold text-finance-blue">Financial Dashboard</h1>
-                <p className="text-muted-foreground">Welcome back! Here's your financial overview.</p>
-              </div>
-              <SidebarTrigger />
+    <div className="min-h-screen flex flex-col">
+      {/* Navbar */}
+      <Navbar />
+      
+      <main className="flex-grow flex flex-col relative z-10">
+        <div className="container mx-auto">
+          <HeroSection />
+        </div>
+        
+        {/* Video Tutorial Section */}
+        <div ref={tutorialRef}>
+          <VideoTutorialSection />
+        </div>
+        
+        {/* Instruction Section */}
+        <InstructionSection />
+        
+        {/* Video Carousel Section */}
+        <div className="bg-background py-16">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Video Resources</h2>
+              <p className="max-w-2xl mx-auto text-lg text-muted-foreground">
+                Explore our video resources to learn more about interview techniques and strategies
+              </p>
             </div>
-          </header>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <StatCard 
-              title="Total Balance" 
-              value="$12,580.00" 
-              description="across all accounts"
-              icon={Wallet}
-            />
-            <StatCard 
-              title="Monthly Income" 
-              value="$4,200.00" 
-              trend={{ value: 2.5, isPositive: true }}
-              icon={TrendingUp}
-              iconColor="text-finance-green"
-            />
-            <StatCard 
-              title="Monthly Expenses" 
-              value="$2,250.00" 
-              trend={{ value: 4.1, isPositive: false }}
-              icon={CreditCard}
-              iconColor="text-finance-red"
-            />
-            <StatCard 
-              title="Total Savings" 
-              value="$9,500.00" 
-              trend={{ value: 12, isPositive: true }}
-              icon={PiggyBank}
-              iconColor="text-finance-teal"
-            />
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <ExpensesChart />
-            <SpendingTrendsChart />
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <BudgetProgress />
-            <div className="grid grid-cols-1 gap-6">
-              <SavingsGoals />
-              <RecentTransactions />
-            </div>
+            <VideoCarousel />
           </div>
         </div>
-      </div>
-    </SidebarProvider>
+        
+        {/* Testimonial Section */}
+        <div ref={testimonialRef} id="testimonials">
+          <TestimonialCarousel />
+        </div>
+      </main>
+      
+      <Footer />
+    </div>
   );
 };
 
