@@ -1,3 +1,4 @@
+
 import { openAIService } from "@/services/OpenAIService";
 
 /**
@@ -76,6 +77,31 @@ export class TranscriptionProcessor {
       }
     } catch (error) {
       console.error("Transcription error:", error);
+    }
+  }
+
+  /**
+   * Transcribe a complete audio recording (non-real-time)
+   * @param audioBlob The complete audio recording to transcribe
+   * @param options Optional configuration for transcription
+   * @returns Promise with the transcription result
+   */
+  async transcribeComplete(audioBlob: Blob, options: any = {}): Promise<{ text: string }> {
+    console.log("Complete transcription requested for blob:", audioBlob.size, audioBlob.type);
+    
+    try {
+      // Use the standard transcribe method from OpenAI service
+      const result = await openAIService.transcribe(audioBlob, {
+        language: options.language || "en",
+        temperature: options.temperature || 0.2,
+        prompt: options.prompt || "This is a complete interview recording. Please transcribe accurately."
+      });
+      
+      console.log("Complete transcription result received");
+      return result;
+    } catch (error) {
+      console.error("Complete transcription error:", error);
+      throw error;
     }
   }
 }

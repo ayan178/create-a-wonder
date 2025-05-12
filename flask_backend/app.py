@@ -5,7 +5,7 @@ Main application entry point
 """
 
 import os
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -29,6 +29,12 @@ app.register_blueprint(auth_routes)
 app.register_blueprint(transcription_routes)
 app.register_blueprint(response_routes)
 app.register_blueprint(tts_routes)
+
+# Add health check endpoint
+@app.route("/api/health", methods=["GET"])
+def health_check():
+    """Health check endpoint for backend availability testing"""
+    return jsonify({"status": "ok"})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
