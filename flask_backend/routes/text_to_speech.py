@@ -30,6 +30,9 @@ def text_to_speech():
         text = data["text"]
         options = data.get("options", {})
         
+        # Log the incoming request
+        print(f"TTS request: '{text[:30]}...' with options: {options}")
+        
         # Call OpenAI TTS API with more natural-sounding voice
         response = client.audio.speech.create(
             model=options.get("model", "tts-1-hd"),
@@ -40,6 +43,8 @@ def text_to_speech():
         
         # Convert audio to base64
         audio_base64 = base64.b64encode(response.content).decode("utf-8")
+        
+        print(f"TTS generation successful, audio size: {len(audio_base64) // 1024}KB")
         
         return jsonify({"audio_data": audio_base64})
     

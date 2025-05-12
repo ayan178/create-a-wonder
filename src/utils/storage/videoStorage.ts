@@ -15,12 +15,23 @@ export class VideoStorage {
       const name = fileName || `interview-${new Date().toISOString().replace(/[:.]/g, "-")}`;
       const fullPath = `${VIDEO_STORAGE_CONFIG.storagePath}/${name}.webm`;
       
+      console.log("Saving recording to:", fullPath, "blob size:", blob.size, "type:", blob.type);
+      
       // Use browser storage to handle the actual saving
-      return await browserStorage.saveRecording(blob, fullPath);
+      const url = await browserStorage.saveRecording(blob, fullPath);
+      console.log("Recording saved, URL:", url);
+      return url;
     } catch (error) {
       console.error("Failed to save recording:", error);
       throw error;
     }
+  }
+  
+  /**
+   * Get the default storage path from config
+   */
+  getStoragePath(): string {
+    return VIDEO_STORAGE_CONFIG.storagePath;
   }
 }
 

@@ -1,107 +1,82 @@
-import { OpenAIService } from "@/services/OpenAIService";
+import { openAIService } from "@/services/OpenAIService";
 
-// Create a singleton instance of OpenAIService
-const openAIService = new OpenAIService();
-
-export interface TranscriptionOptions {
-  prompt?: string;
-  language?: string;
-}
-
+/**
+ * Processes audio chunks for real-time transcription
+ */
 export class TranscriptionProcessor {
-  private audioChunks: Blob[] = [];
-  private transcriptionInterval: ReturnType<typeof setInterval> | null = null;
+  private audioBuffer: Blob[] = [];
+  private bufferThreshold = 3; // Number of chunks to buffer before processing
+  private isActive = false;
+  private transcriptionCallback: ((text: string) => void) | null = null;
   
   /**
    * Start real-time transcription
-   * @param callback Function to call with transcription text
-   * @param intervalMs How often to process audio chunks (default: 3000ms)
+   * @param callback Function to call with transcribed text
    */
-  startRealTimeTranscription(
-    callback: (text: string) => void, 
-    intervalMs = 3000
-  ): void {
-    // Clear any existing transcription interval
-    if (this.transcriptionInterval) {
-      clearInterval(this.transcriptionInterval);
-    }
-    
-    this.audioChunks = [];
-    
-    // Set up new interval for transcription
-    this.transcriptionInterval = setInterval(async () => {
-      if (this.audioChunks.length > 0) {
-        try {
-          // Create a blob from the collected audio chunks
-          const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-          
-          // Keep some recent audio for context
-          const maxChunks = 4; // Keep last 4 chunks for context
-          if (this.audioChunks.length > maxChunks) {
-            this.audioChunks = this.audioChunks.slice(-maxChunks);
-          }
-          
-          console.log(`Processing audio chunk: ${audioBlob.size} bytes`);
-          
-          // Send to OpenAI API for transcription
-          const result = await openAIService.transcribeRealTime(audioBlob, {
-            prompt: "This is part of a job interview conversation. The speaker is answering interview questions."
-          });
-          
-          // Call the callback with the transcribed text
-          if (result.text && result.text.trim()) {
-            console.log("Transcription result:", result.text);
-            callback(result.text);
-          } else {
-            console.log("Empty transcription received");
-          }
-        } catch (error) {
-          console.error("Real-time transcription error:", error);
-        }
-      } else {
-        console.log("No audio chunks for transcription");
-      }
-    }, intervalMs);
+  startRealTimeTranscription(callback: (text: string) => void): void {
+    this.isActive = true;
+    this.transcriptionCallback = callback;
+    this.audioBuffer = []; // Clear any existing buffer
+    console.log("Transcription processor started");
   }
-  
+
   /**
-   * Add audio chunk for transcription processing
-   * @param chunk Audio data chunk
-   */
-  addAudioChunk(chunk: Blob): void {
-    this.audioChunks.push(chunk);
-  }
-  
-  /**
-   * Process a complete audio recording for transcription
-   * @param audioBlob Complete audio recording
-   * @param options Transcription options
-   * @returns Transcription result
-   */
-  async transcribeComplete(
-    audioBlob: Blob, 
-    options: TranscriptionOptions = {}
-  ): Promise<{ text: string }> {
-    try {
-      return await openAIService.transcribe(audioBlob, {
-        language: options.language || "en",
-        prompt: options.prompt,
-      });
-    } catch (error) {
-      console.error("Complete transcription error:", error);
-      throw error;
-    }
-  }
-  
-  /**
-   * Stop real-time transcription
+   * Stop transcription and clear resources
    */
   stopTranscription(): void {
-    if (this.transcriptionInterval) {
-      clearInterval(this.transcriptionInterval);
-      this.transcriptionInterval = null;
+    this.isActive = false;
+    this.transcriptionCallback = null;
+    this.audioBuffer = [];
+    console.log("Transcription processor stopped");
+  }
+
+  /**
+   * Add an audio chunk for transcription
+   * @param chunk The audio chunk to process
+   */
+  addAudioChunk(chunk: Blob): void {
+    console.log("Transcription: received audio chunk, size:", chunk.size, "type:", chunk.type);
+    
+    // Skip if not actively processing
+    if (!this.isActive) {
+      console.log("Transcription: skipping chunk because processor is not active");
+      return;
     }
-    this.audioChunks = [];
+    
+    // Add to the buffer for batch processing
+    this.audioBuffer.push(chunk);
+    
+    // Process if buffer reaches threshold
+    if (this.audioBuffer.length >= this.bufferThreshold) {
+      this.processBufferedAudio();
+    }
+  }
+
+  /**
+   * Process the buffered audio chunks
+   */
+  private async processBufferedAudio(): Promise<void> {
+    if (!this.isActive || !this.transcriptionCallback) return;
+    
+    // Combine the audio chunks into a single blob
+    const combinedBlob = new Blob(this.audioBuffer, { type: 'audio/webm' });
+    this.audioBuffer = []; // Clear the buffer immediately
+    
+    try {
+      console.log("Transcription: processing audio, size:", combinedBlob.size);
+      
+      // Transcribe the audio using OpenAI
+      const transcriptionResult = await openAIService.transcribeRealTime(combinedBlob);
+      
+      if (transcriptionResult.text) {
+        console.log("Transcription: sending text:", transcriptionResult.text);
+        this.transcriptionCallback(transcriptionResult.text);
+      } else {
+        console.warn("Transcription: no text received");
+      }
+    } catch (error) {
+      console.error("Transcription error:", error);
+    }
   }
 }
 
