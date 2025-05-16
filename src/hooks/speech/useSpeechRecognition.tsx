@@ -2,7 +2,7 @@
 import "regenerator-runtime/runtime";
 import { useState, useCallback, useEffect } from 'react';
 import SpeechRecognition from 'react-speech-recognition';
-import { requestAudioPermission } from "@/utils/speechUtils";
+import { requestAudioPermission, getIsSpeaking } from "@/utils/speechUtils";
 import { toast } from "@/hooks/use-toast";
 
 /**
@@ -21,6 +21,12 @@ export const useSpeechRecognition = () => {
    * Start speech recognition with retry logic
    */
   const startListening = useCallback(async () => {
+    // Don't start listening if the AI is currently speaking
+    if (getIsSpeaking()) {
+      console.log("AI is currently speaking, not starting speech recognition");
+      return;
+    }
+
     if (!browserSupportsSpeechRecognition) {
       console.error('Browser does not support speech recognition');
       toast({
@@ -65,11 +71,6 @@ export const useSpeechRecognition = () => {
       
       setIsRecognitionActive(true);
       console.log('Started listening for speech');
-      
-      toast({
-        title: "Listening started",
-        description: "Speak clearly to begin transcription",
-      });
       
       // Reset attempt counter on successful start
       setStartAttempts(0);

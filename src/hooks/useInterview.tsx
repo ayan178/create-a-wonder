@@ -1,5 +1,4 @@
-
-import { useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { videoRecorder } from "@/utils/videoRecording";
 import { toast } from "@/hooks/use-toast";
 import { useInterviewState } from "./interview/useInterviewState";
@@ -9,6 +8,7 @@ import { useAIResponse } from "@/hooks/useAIResponse";
 import { useSpeechToText } from "@/hooks/useSpeechToText";
 import { useSpeechMonitor } from "./useSpeechMonitor";
 import { useInterviewInitialization } from "./useInterviewInitialization";
+import { getIsSpeaking } from "@/utils/speechUtils";
 
 /**
  * Custom hook for managing interview logic and state
@@ -121,6 +121,21 @@ const useInterview = (isSystemAudioOn: boolean) => {
     deactivateSpeechRecognition
   );
 
+  // Track AI speaking state
+  const [isAISpeaking, setIsAISpeaking] = useState(false);
+  
+  // Effect to monitor AI speaking state
+  useEffect(() => {
+    const checkSpeakingInterval = setInterval(() => {
+      const speaking = getIsSpeaking();
+      if (speaking !== isAISpeaking) {
+        setIsAISpeaking(speaking);
+      }
+    }, 200);
+    
+    return () => clearInterval(checkSpeakingInterval);
+  }, [isAISpeaking]);
+
   /**
    * Start the interview and recording
    * @param stream Media stream to record from
@@ -192,6 +207,7 @@ const useInterview = (isSystemAudioOn: boolean) => {
     videoUrl,
     isProcessingAI,
     isListening,
+    isAISpeaking,
     browserSupportsSpeechRecognition,
     hasMicPermission
   };

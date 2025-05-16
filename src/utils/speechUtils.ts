@@ -1,9 +1,18 @@
-
 import { OpenAIService } from "@/services/OpenAIService";
 import { TextToSpeechOptions } from "@/services/OpenAIServiceTypes";
 import { toast } from "@/hooks/use-toast";
 
 const openAIService = new OpenAIService();
+
+// Global variable to track speaking state
+let isSpeaking = false;
+
+/**
+ * Check if AI is currently speaking
+ */
+export const getIsSpeaking = (): boolean => {
+  return isSpeaking;
+};
 
 /**
  * Speak text using OpenAI TTS
@@ -20,19 +29,32 @@ export const speakText = async (
   
   try {
     console.log("Speaking text:", text);
+    isSpeaking = true;
+    
+    // Calculate approximate speaking duration (5 words per second)
+    const wordCount = text.split(/\s+/).length;
+    const approximateDuration = (wordCount / 5) * 1000;
     
     // Generate speech using OpenAI TTS API
     const audioBlob = await openAIService.textToSpeech(text, options);
     
     // Play the audio
-    return await playAudio(audioBlob);
+    await playAudio(audioBlob);
+    
+    // Add a small delay to ensure speech is complete
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    isSpeaking = false;
+    return Promise.resolve();
   } catch (error) {
     console.error("Error speaking text:", error);
     
     // Try browser's built-in speech synthesis as fallback
     console.log("Falling back to browser speech synthesis");
     try {
+      isSpeaking = true;
       await speakWithBrowserSynthesis(text);
+      isSpeaking = false;
       return Promise.resolve();
     } catch (fallbackError) {
       console.error("Fallback speech synthesis failed:", fallbackError);
@@ -41,6 +63,7 @@ export const speakText = async (
         description: "Please check your OpenAI API key or try again later.",
         variant: "destructive",
       });
+      isSpeaking = false;
       return Promise.resolve();
     }
   }
@@ -59,11 +82,13 @@ export const playAudio = async (audioBlob: Blob): Promise<void> => {
       // Set up event handlers
       audio.onended = () => {
         URL.revokeObjectURL(audioUrl);
+        isSpeaking = false;
         resolve();
       };
       
       audio.onerror = (err) => {
         URL.revokeObjectURL(audioUrl);
+        isSpeaking = false;
         reject(new Error(`Audio playback error: ${err}`));
       };
       
@@ -71,9 +96,11 @@ export const playAudio = async (audioBlob: Blob): Promise<void> => {
       audio.play().catch(error => {
         console.error("Audio play error:", error);
         URL.revokeObjectURL(audioUrl);
+        isSpeaking = false;
         reject(error);
       });
     } catch (error) {
+      isSpeaking = false;
       reject(error);
     }
   });

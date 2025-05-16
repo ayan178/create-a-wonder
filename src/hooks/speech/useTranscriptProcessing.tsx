@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import SpeechRecognition, { useSpeechRecognition as useSpeechRecognitionLib } from 'react-speech-recognition';
 import { toast } from "@/hooks/use-toast";
+import { getIsSpeaking } from "@/utils/speechUtils";
 
 /**
  * Hook for processing speech recognition transcript
@@ -21,6 +22,10 @@ export const useTranscriptProcessing = (
   const [lastProcessedTranscript, setLastProcessedTranscript] = useState('');
   const silentPeriodTimer = useRef<NodeJS.Timeout | null>(null);
   const firstTranscriptReceived = useRef<boolean>(false);
+  const lastActivityTime = useRef<number>(Date.now());
+  
+  // Configure longer silence detection (10 seconds to 15 seconds)
+  const SILENCE_PERIOD = 15000; // Wait 15 seconds of silence before processing
   
   /**
    * Reset transcript and processed state
@@ -29,12 +34,19 @@ export const useTranscriptProcessing = (
     resetTranscript();
     setLastProcessedTranscript('');
     firstTranscriptReceived.current = false;
+    lastActivityTime.current = Date.now();
   }, [resetTranscript]);
 
   /**
    * Reset and restart recognition
    */
   const resetAndRestartListening = useCallback(() => {
+    // Don't restart if AI is speaking
+    if (getIsSpeaking()) {
+      console.log("AI is currently speaking, delaying speech recognition restart");
+      return;
+    }
+    
     SpeechRecognition.stopListening().then(() => {
       resetTranscript();
       console.log("Speech recognition reset, restarting...");
@@ -44,6 +56,7 @@ export const useTranscriptProcessing = (
           language: 'en-US',
         }).then(() => {
           console.log("Speech recognition restarted successfully");
+          lastActivityTime.current = Date.now();
         }).catch(err => {
           console.error("Failed to restart speech recognition:", err);
           toast({
@@ -73,39 +86,58 @@ export const useTranscriptProcessing = (
       });
     }
     
-    // Debounce processing to collect more complete phrases
+    // Update activity timestamp when new transcript is received
+    if (transcript !== lastProcessedTranscript) {
+      lastActivityTime.current = Date.now();
+    }
+    
+    // Process only after a significant pause (2 seconds)
+    // This allows collecting more complete sentences
     const timeoutId = setTimeout(() => {
       if (transcript === lastProcessedTranscript) return;
       
       // Check if enough new text to process
       const newText = transcript.substring(lastProcessedTranscript.length).trim();
       
-      if (newText) {
+      if (newText && newText.length >= 5) { // At least 5 chars to process
         console.log("Processing new speech:", newText);
         onTranscript(newText);
         setLastProcessedTranscript(transcript);
       }
-    }, 1000); // 1 second debounce
+    }, 2000); // 2 second debounce for collecting complete phrases
     
     return () => clearTimeout(timeoutId);
   }, [transcript, lastProcessedTranscript, onTranscript, isInterviewActive]);
   
-  // Monitor for silent periods
+  // Monitor for silent periods with increased duration
   useEffect(() => {
-    // Reset the silent period timer when we receive new transcripts
-    if (transcript !== lastProcessedTranscript) {
-      // Clear previous timer if exists
-      if (silentPeriodTimer.current) {
-        clearTimeout(silentPeriodTimer.current);
-      }
-      
+    // Clear previous timer if exists
+    if (silentPeriodTimer.current) {
+      clearTimeout(silentPeriodTimer.current);
+    }
+    
+    if (isInterviewActive && listening && !getIsSpeaking()) {
       // Set new timer to check if user stopped speaking
       silentPeriodTimer.current = setTimeout(() => {
-        if (isInterviewActive && listening && lastProcessedTranscript === transcript) {
-          console.log("Detected silent period. Restarting speech recognition...");
+        const now = Date.now();
+        const timeSinceLastActivity = now - lastActivityTime.current;
+        
+        if (timeSinceLastActivity >= SILENCE_PERIOD && lastProcessedTranscript === transcript) {
+          console.log(`Detected ${SILENCE_PERIOD/1000}s silence period. Processing final transcript.`);
+          
+          // If there's unprocessed transcript, process it now
+          if (transcript !== lastProcessedTranscript) {
+            const remainingText = transcript.substring(lastProcessedTranscript.length).trim();
+            if (remainingText) {
+              onTranscript(remainingText);
+              setLastProcessedTranscript(transcript);
+            }
+          }
+          
+          // Restart recognition to prevent issues with long sessions
           resetAndRestartListening();
         }
-      }, 10000); // 10 seconds of silence
+      }, SILENCE_PERIOD); // Check after silence period
     }
     
     return () => {
@@ -113,7 +145,14 @@ export const useTranscriptProcessing = (
         clearTimeout(silentPeriodTimer.current);
       }
     };
-  }, [listening, isInterviewActive, transcript, lastProcessedTranscript, resetAndRestartListening]);
+  }, [
+    listening, 
+    isInterviewActive, 
+    transcript, 
+    lastProcessedTranscript, 
+    resetAndRestartListening,
+    onTranscript
+  ]);
   
   return {
     transcript,

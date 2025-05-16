@@ -39,7 +39,8 @@ const InterviewPage = () => {
     endInterview,
     currentCodingQuestion,
     browserSupportsSpeechRecognition,
-    isListening
+    isListening,
+    isAISpeaking
   } = useInterview(isSystemAudioOn);
 
   const [lastTranscribed, setLastTranscribed] = useState("");
@@ -189,6 +190,8 @@ const InterviewPage = () => {
                   isInterviewStarted={isInterviewStarted}
                   currentQuestion={currentQuestion}
                   isSystemAudioOn={isSystemAudioOn}
+                  isSpeaking={isAISpeaking}
+                  isListening={isListening && !isAISpeaking}
                 />
               </CardContent>
             </Card>
