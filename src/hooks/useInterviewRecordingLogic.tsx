@@ -4,14 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { videoRecorder } from "@/utils/videoRecording";
 import { toast } from "@/hooks/use-toast";
 import { useTranscriptionHandling } from "./useTranscriptionHandling";
-import { VIDEO_STORAGE_CONFIG } from "@/config/storageConfig";
 
 /**
  * Hook for handling interview recording start and end
  */
 export const useInterviewRecordingLogic = (
   addToTranscript: (speaker: string, text: string) => void,
-  handleRealTimeTranscription: (blob: Blob) => void,
+  handleRealTimeTranscription: (blob: Blob) => void, // Fixed: Changed type to match expected Blob
   setIsRecording: (isRecording: boolean) => void,
   setVideoUrl: (url: string | null) => void
 ) => {
@@ -38,22 +37,11 @@ export const useInterviewRecordingLogic = (
       // Log audio track info for debugging
       console.log("Audio tracks available:", audioTracks.length);
       audioTracks.forEach((track, i) => {
-        console.log(`Audio track ${i}:`, track.label, track.enabled, track.readyState);
+        console.log(`Track ${i}:`, track.label, track.enabled, track.readyState);
       });
-      
-      // Log video track info
-      const videoTracks = stream.getVideoTracks();
-      console.log("Video tracks available:", videoTracks.length);
-      videoTracks.forEach((track, i) => {
-        console.log(`Video track ${i}:`, track.label, track.enabled, track.readyState);
-      });
-      
-      // Override MIME type from config if needed
-      const mimeType = VIDEO_STORAGE_CONFIG.videoSettings.mimeType;
       
       // Start recording with real-time transcription enabled
       await videoRecorder.startRecording(stream, {
-        mimeType: mimeType,
         enableRealTimeTranscription: true,
         transcriptionCallback: (text: string) => {
           // Handle text transcriptions directly
@@ -73,8 +61,6 @@ export const useInterviewRecordingLogic = (
           }
         }
       });
-      
-      console.log("Recording started successfully");
       
       // Update recording state
       setIsRecording(true);
@@ -104,14 +90,10 @@ export const useInterviewRecordingLogic = (
     try {
       // Stop recording and get the blob
       const recordedBlob = await videoRecorder.stopRecording();
-      console.log("Recording stopped, blob size:", recordedBlob.size, "type:", recordedBlob.type);
-      
       setIsRecording(false);
       
       // Save the recording and get the URL
       const url = await videoRecorder.saveRecording(recordedBlob);
-      console.log("Recording saved, URL:", url);
-      
       setVideoUrl(url);
       
       // Final transcription of the full recording for completeness

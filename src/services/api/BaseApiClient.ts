@@ -82,17 +82,7 @@ export class BaseApiClient {
         
         // Handle different HTTP status codes
         if (!response.ok) {
-          const contentType = response.headers.get('Content-Type');
-          
-          // Try to parse as JSON if it's JSON, otherwise get text
-          let errorBody;
-          if (contentType && contentType.includes('application/json')) {
-            errorBody = await response.json().catch(() => ({}));
-          } else {
-            const text = await response.text().catch(() => "Unknown error");
-            errorBody = { error: `Non-JSON response: ${text.substring(0, 100)}...` };
-          }
-          
+          const errorBody = await response.json().catch(() => ({}));
           const errorMessage = errorBody.error || `HTTP Error: ${response.status} ${response.statusText}`;
           
           // For certain status codes, we don't want to retry
@@ -103,22 +93,7 @@ export class BaseApiClient {
           throw new BackendError(errorMessage, response.status, attempt);
         }
         
-        // Check if response is JSON before parsing
-        const contentType = response.headers.get('Content-Type');
-        if (contentType && contentType.includes('application/json')) {
-          return await response.json() as T;
-        } else {
-          // If not JSON, try to get text and make it into a valid response object
-          const text = await response.text();
-          this.log(`Non-JSON response from ${endpoint}:`, text.substring(0, 100));
-          
-          // Return a generic success response if the endpoint was 'health'
-          if (endpoint === 'health') {
-            return { status: 'ok' } as unknown as T;
-          }
-          
-          throw new BackendError(`Expected JSON response but got: ${text.substring(0, 100)}...`);
-        }
+        return await response.json() as T;
       } catch (error) {
         // Handle different error types
         if (error instanceof BackendError) {

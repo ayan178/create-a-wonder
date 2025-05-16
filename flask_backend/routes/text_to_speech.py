@@ -30,40 +30,19 @@ def text_to_speech():
         text = data["text"]
         options = data.get("options", {})
         
-        # Log the incoming request
-        print(f"TTS request: '{text[:30]}...' with options: {options}")
-        
-        # Default to higher volume/amplification
-        voice = options.get("voice", "nova")  # Using nova for a more natural voice
-        model = options.get("model", "tts-1-hd")
-        speed = options.get("speed", 1.0)
-        
         # Call OpenAI TTS API with more natural-sounding voice
         response = client.audio.speech.create(
-            model=model,
-            voice=voice,
+            model=options.get("model", "tts-1-hd"),
+            voice=options.get("voice", "nova"),  # Using nova for a more natural voice
             input=text,
-            speed=speed,
-            # Use higher quality audio format when available
-            response_format="mp3" 
+            speed=options.get("speed", 1.0)
         )
         
         # Convert audio to base64
         audio_base64 = base64.b64encode(response.content).decode("utf-8")
         
-        print(f"TTS generation successful, audio size: {len(audio_base64) // 1024}KB")
-        
-        return jsonify({
-            "audio_data": audio_base64,
-            "format": "mp3",
-            "voice": voice,
-            "model": model,
-            "success": True
-        })
+        return jsonify({"audio_data": audio_base64})
     
     except Exception as e:
         print(f"TTS error: {str(e)}")
-        return jsonify({
-            "error": str(e),
-            "success": False
-        }), 500
+        return jsonify({"error": str(e)}), 500

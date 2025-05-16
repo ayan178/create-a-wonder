@@ -20,7 +20,8 @@ This directory contains a Flask backend that handles OpenAI API calls securely.
    ```
 
 4. Set your OpenAI API key as an environment variable:
-   - Windows: `set OPENAI_API_KEY=your-api-key-here`
+   - Windows: `set OPENAI_API_KEY=your-api-key-here` 
+    
    - macOS/Linux: `export OPENAI_API_KEY=your-api-key-here`
 
 5. Run the Flask server:

@@ -16,20 +16,18 @@ export const speakText = async (
   isSystemAudioOn: boolean,
   options: TextToSpeechOptions = { voice: "nova", speed: 1.0, model: "tts-1-hd" }
 ): Promise<void> => {
-  // Skip if audio is disabled or text is empty
   if (!isSystemAudioOn || !text) return Promise.resolve();
   
   try {
-    console.log("Speaking text with TTS:", text.substring(0, 50) + "...");
+    console.log("Speaking text:", text);
     
     // Generate speech using OpenAI TTS API
     const audioBlob = await openAIService.textToSpeech(text, options);
-    console.log("Audio blob received, size:", audioBlob.size);
     
     // Play the audio
     return await playAudio(audioBlob);
   } catch (error) {
-    console.error("Error speaking text with OpenAI TTS:", error);
+    console.error("Error speaking text:", error);
     
     // Try browser's built-in speech synthesis as fallback
     console.log("Falling back to browser speech synthesis");
@@ -54,43 +52,28 @@ export const speakText = async (
 export const playAudio = async (audioBlob: Blob): Promise<void> => {
   return new Promise((resolve, reject) => {
     try {
-      console.log("Playing audio blob, type:", audioBlob.type, "size:", audioBlob.size);
-      
       // Create audio URL and element
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
       
-      // Log when audio starts playing
-      audio.oncanplaythrough = () => {
-        console.log("Audio ready to play, duration:", audio.duration || "unknown");
-      };
-      
       // Set up event handlers
       audio.onended = () => {
-        console.log("Audio playback completed");
         URL.revokeObjectURL(audioUrl);
         resolve();
       };
       
       audio.onerror = (err) => {
-        console.error("Audio playback error:", err);
         URL.revokeObjectURL(audioUrl);
         reject(new Error(`Audio playback error: ${err}`));
       };
       
-      // Increase volume to ensure it's audible
-      audio.volume = 1.0;
-      
       // Play the audio
-      audio.play().then(() => {
-        console.log("Audio playback started");
-      }).catch(error => {
+      audio.play().catch(error => {
         console.error("Audio play error:", error);
         URL.revokeObjectURL(audioUrl);
         reject(error);
       });
     } catch (error) {
-      console.error("Error setting up audio playback:", error);
       reject(error);
     }
   });
@@ -118,8 +101,6 @@ export const speakWithBrowserSynthesis = (
       return;
     }
     
-    console.log("Using browser speech synthesis for:", text.substring(0, 50) + "...");
-    
     // Create speech synthesis utterance
     const utterance = new SpeechSynthesisUtterance(text);
     
@@ -136,12 +117,10 @@ export const speakWithBrowserSynthesis = (
     
     if (englishVoices.length > 0) {
       utterance.voice = englishVoices[0];
-      console.log("Selected voice:", utterance.voice.name);
     }
     
     // Add event handlers
     utterance.onend = () => {
-      console.log("Browser speech synthesis completed");
       resolve();
     };
     
@@ -152,7 +131,6 @@ export const speakWithBrowserSynthesis = (
     
     // Speak the text
     window.speechSynthesis.speak(utterance);
-    console.log("Browser speech synthesis started");
   });
 };
 
