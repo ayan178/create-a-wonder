@@ -4,14 +4,23 @@ import { toast } from "@/hooks/use-toast";
 
 const openAIService = new OpenAIService();
 
-// Global variable to track speaking state
+// Global variables to track speaking state and audio element
 let isSpeaking = false;
+let currentAudioElement: HTMLAudioElement | null = null;
 
 /**
  * Check if AI is currently speaking
  */
 export const getIsSpeaking = (): boolean => {
   return isSpeaking;
+};
+
+/**
+ * Get the current audio element being used for speech
+ * Used for recording the AI's voice
+ */
+export const getCurrentAudioElement = (): HTMLAudioElement | null => {
+  return currentAudioElement;
 };
 
 /**
@@ -31,20 +40,18 @@ export const speakText = async (
     console.log("Speaking text:", text);
     isSpeaking = true;
     
-    // Calculate approximate speaking duration (5 words per second)
-    const wordCount = text.split(/\s+/).length;
-    const approximateDuration = (wordCount / 5) * 1000;
-    
     // Generate speech using OpenAI TTS API
     const audioBlob = await openAIService.textToSpeech(text, options);
     
     // Play the audio
-    await playAudio(audioBlob);
+    const audioElement = await playAudio(audioBlob);
+    currentAudioElement = audioElement;
     
     // Add a small delay to ensure speech is complete
     await new Promise(resolve => setTimeout(resolve, 500));
     
     isSpeaking = false;
+    currentAudioElement = null;
     return Promise.resolve();
   } catch (error) {
     console.error("Error speaking text:", error);
@@ -55,6 +62,7 @@ export const speakText = async (
       isSpeaking = true;
       await speakWithBrowserSynthesis(text);
       isSpeaking = false;
+      currentAudioElement = null;
       return Promise.resolve();
     } catch (fallbackError) {
       console.error("Fallback speech synthesis failed:", fallbackError);
@@ -64,6 +72,7 @@ export const speakText = async (
         variant: "destructive",
       });
       isSpeaking = false;
+      currentAudioElement = null;
       return Promise.resolve();
     }
   }
@@ -71,8 +80,9 @@ export const speakText = async (
 
 /**
  * Play audio from a blob
+ * @returns The audio element used for playback
  */
-export const playAudio = async (audioBlob: Blob): Promise<void> => {
+export const playAudio = async (audioBlob: Blob): Promise<HTMLAudioElement> => {
   return new Promise((resolve, reject) => {
     try {
       // Create audio URL and element
@@ -83,24 +93,29 @@ export const playAudio = async (audioBlob: Blob): Promise<void> => {
       audio.onended = () => {
         URL.revokeObjectURL(audioUrl);
         isSpeaking = false;
-        resolve();
+        currentAudioElement = null;
       };
       
       audio.onerror = (err) => {
         URL.revokeObjectURL(audioUrl);
         isSpeaking = false;
+        currentAudioElement = null;
         reject(new Error(`Audio playback error: ${err}`));
       };
       
       // Play the audio
-      audio.play().catch(error => {
+      audio.play().then(() => {
+        resolve(audio);
+      }).catch(error => {
         console.error("Audio play error:", error);
         URL.revokeObjectURL(audioUrl);
         isSpeaking = false;
+        currentAudioElement = null;
         reject(error);
       });
     } catch (error) {
       isSpeaking = false;
+      currentAudioElement = null;
       reject(error);
     }
   });

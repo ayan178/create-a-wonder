@@ -4,13 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { videoRecorder } from "@/utils/videoRecording";
 import { toast } from "@/hooks/use-toast";
 import { useTranscriptionHandling } from "./useTranscriptionHandling";
+import { getCurrentAudioElement } from "@/utils/speechUtils";
 
 /**
  * Hook for handling interview recording start and end
  */
 export const useInterviewRecordingLogic = (
   addToTranscript: (speaker: string, text: string) => void,
-  handleRealTimeTranscription: (blob: Blob) => void, // Fixed: Changed type to match expected Blob
+  handleRealTimeTranscription: (blob: Blob) => void,
   setIsRecording: (isRecording: boolean) => void,
   setVideoUrl: (url: string | null) => void
 ) => {
@@ -40,9 +41,13 @@ export const useInterviewRecordingLogic = (
         console.log(`Track ${i}:`, track.label, track.enabled, track.readyState);
       });
       
+      // Get current audio element for AI speech if available
+      const audioElement = getCurrentAudioElement();
+      
       // Start recording with real-time transcription enabled
       await videoRecorder.startRecording(stream, {
         enableRealTimeTranscription: true,
+        audioElement, // Include AI audio in the recording
         transcriptionCallback: (text: string) => {
           // Handle text transcriptions directly
           console.log("Received transcription text:", text);
@@ -68,7 +73,7 @@ export const useInterviewRecordingLogic = (
       // Add a test message to verify transcription is working
       setTimeout(() => {
         console.log("Adding test transcript entry to verify system");
-        addToTranscript("System", "Interview recording started. Speak clearly into your microphone.");
+        addToTranscript("System", "Interview recording started. Both your voice and the AI interviewer's voice will be recorded.");
       }, 1000);
 
       return true;
@@ -103,7 +108,7 @@ export const useInterviewRecordingLogic = (
       
       toast({
         title: "Interview completed",
-        description: "Recording saved successfully",
+        description: `Recording saved to ${videoRecorder.getStoragePath()}`,
       });
       
       // Navigate back to dashboard
@@ -121,8 +126,22 @@ export const useInterviewRecordingLogic = (
     }
   }, [generateFullTranscript, isTranscriptionInProgress, navigate, setIsRecording, setVideoUrl]);
 
+  /**
+   * Set a custom storage path
+   */
+  const setStoragePath = useCallback((path: string) => {
+    if (path) {
+      videoRecorder.setStoragePath(path);
+      toast({
+        title: "Storage location updated",
+        description: `Recordings will be saved to: ${path}`
+      });
+    }
+  }, []);
+
   return {
     startRecording,
-    endRecording
+    endRecording,
+    setStoragePath
   };
-};
+}
