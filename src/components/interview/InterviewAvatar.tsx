@@ -37,7 +37,7 @@ const InterviewAvatar: React.FC<InterviewAvatarProps> = ({
               isListening ? 'border-green-400 animate-pulse' : 'border-primary/30'
             }`} style={{ width: '250px', height: '250px' }}>
               <img 
-                src="/lovable-uploads/dd63a16d-398e-4187-a982-b19a91446630.png" 
+                src="/images.jpg" 
                 alt="AI Interviewer Avatar" 
                 className="w-full h-full object-cover"
               />
@@ -88,7 +88,7 @@ const InterviewAvatar: React.FC<InterviewAvatarProps> = ({
           transition={{ duration: 0.5, delay: 0.2 }}
           className="text-center"
         >
-          <h2 className="text-xl font-semibold">Alex</h2>
+          <h2 className="text-xl font-semibold">Anna</h2>
           <p className="text-sm text-muted-foreground">AI Interview Assistant</p>
         </motion.div>
       </div>

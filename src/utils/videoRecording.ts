@@ -1,8 +1,6 @@
-
 import { mediaRecorder } from './mediaRecorder';
 import { transcriptionProcessor } from './transcriptionProcessor';
 import { videoStorage } from './storage/videoStorage';
-import { VIDEO_STORAGE_CONFIG, setStoragePath } from '@/config/storageConfig';
 
 export interface RecordingOptions {
   fileName?: string;
@@ -10,8 +8,6 @@ export interface RecordingOptions {
   // Configuration for real-time transcription
   enableRealTimeTranscription?: boolean;
   transcriptionCallback?: (text: string) => void;
-  // System audio source for capturing AI voice
-  audioElement?: HTMLAudioElement;
 }
 
 /**
@@ -26,22 +22,15 @@ export class VideoRecorder {
    */
   async startRecording(stream: MediaStream, options: RecordingOptions = {}): Promise<void> {
     try {
-      // Add system audio to the mix if an audio element is provided
-      if (options.audioElement) {
-        mediaRecorder.addSystemAudioToMix(options.audioElement);
-      }
-      
       // Start the media recorder
       await mediaRecorder.startRecording(stream, { 
-        mimeType: options.mimeType || 'video/webm;codecs=vp9,opus'
+        mimeType: options.mimeType 
       });
       
       // Set up real-time transcription if enabled
       if (options.enableRealTimeTranscription && options.transcriptionCallback) {
         transcriptionProcessor.startRealTimeTranscription(options.transcriptionCallback);
       }
-      
-      console.log("Video recording started with system audio capture");
     } catch (error) {
       console.error("Failed to start recording:", error);
       throw error;
@@ -73,9 +62,7 @@ export class VideoRecorder {
    * @param fileName Optional name for the recording file
    */
   async saveRecording(blob: Blob, fileName?: string): Promise<string> {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const name = fileName || `interview-${timestamp}`;
-    return videoStorage.saveRecording(blob, name);
+    return videoStorage.saveRecording(blob, fileName);
   }
 
   /**
@@ -92,25 +79,32 @@ export class VideoRecorder {
     mediaRecorder.cleanup();
     transcriptionProcessor.stopTranscription();
   }
-
-  /**
-   * Set the storage path for recordings
-   */
-  setStoragePath(path: string): void {
-    setStoragePath(path);
-    console.log(`Recording storage path set to: ${path}`);
-  }
-
-  /**
-   * Get the current storage path for recordings
-   */
-  getStoragePath(): string {
-    return VIDEO_STORAGE_CONFIG.storagePath;
-  }
 }
 
 // Export a singleton instance for use throughout the app
 export const videoRecorder = new VideoRecorder();
+
+// Add an event listener to handle ondataavailable events
+// This patch connects the MediaRecorder and TranscriptionProcessor
+if (typeof window !== 'undefined') {
+  const originalMediaRecorderStart = MediaRecorder.prototype.start;
+  MediaRecorder.prototype.start = function(...args) {
+    this.ondataavailable = this.ondataavailable || (() => {});
+    const originalOnDataAvailable = this.ondataavailable;
+    
+    this.ondataavailable = (event) => {
+      // Call the original handler
+      originalOnDataAvailable.call(this, event);
+      
+      // Forward data to the transcription processor if it has content
+      if (event.data && event.data.size > 0) {
+        transcriptionProcessor.addAudioChunk(event.data);
+      }
+    };
+    
+    return originalMediaRecorderStart.apply(this, args);
+  };
+}
 
 // Re-export all utilities for convenience
 export { mediaRecorder, transcriptionProcessor, videoStorage };

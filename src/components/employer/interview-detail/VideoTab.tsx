@@ -1,53 +1,14 @@
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, Download, Pause, Volume2, VolumeX, RotateCcw } from "lucide-react";
+import { Play, Download, Pause, Volume2, VolumeX } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
-import { Progress } from "@/components/ui/progress";
 
 const VideoTab = ({ videoUrl }: { videoUrl?: string }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(1);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    // Set up video event listeners when the component mounts
-    const videoElement = videoRef.current;
-    if (videoElement) {
-      videoElement.addEventListener('timeupdate', handleTimeUpdate);
-      videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
-      videoElement.addEventListener('ended', handleVideoEnd);
-      
-      return () => {
-        // Clean up event listeners when the component unmounts
-        videoElement.removeEventListener('timeupdate', handleTimeUpdate);
-        videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
-        videoElement.removeEventListener('ended', handleVideoEnd);
-      };
-    }
-  }, []);
-
-  const handleTimeUpdate = () => {
-    if (videoRef.current) {
-      const current = videoRef.current.currentTime;
-      setCurrentTime(current);
-      setProgress((current / duration) * 100);
-    }
-  };
-
-  const handleLoadedMetadata = () => {
-    if (videoRef.current) {
-      setDuration(videoRef.current.duration);
-    }
-  };
-  
-  const handleVideoEnd = () => {
-    setIsPlaying(false);
-  };
 
   const togglePlay = () => {
     if (videoRef.current) {
@@ -72,37 +33,6 @@ const VideoTab = ({ videoUrl }: { videoUrl?: string }) => {
     setVolume(newVolume);
     if (videoRef.current) {
       videoRef.current.volume = newVolume;
-    }
-  };
-
-  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!videoRef.current || !duration) return;
-    
-    const progressBar = e.currentTarget;
-    const rect = progressBar.getBoundingClientRect();
-    const pos = (e.clientX - rect.left) / progressBar.offsetWidth;
-    const newTime = duration * pos;
-    
-    videoRef.current.currentTime = newTime;
-    setCurrentTime(newTime);
-    setProgress(pos * 100);
-  };
-
-  const formatTime = (time: number) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-  };
-
-  const restartVideo = () => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-      setCurrentTime(0);
-      setProgress(0);
-      if (!isPlaying) {
-        videoRef.current.play();
-        setIsPlaying(true);
-      }
     }
   };
 
@@ -144,27 +74,6 @@ const VideoTab = ({ videoUrl }: { videoUrl?: string }) => {
         )}
       </div>
       
-      {videoUrl && (
-        <div className="space-y-2">
-          {/* Video progress bar */}
-          <div 
-            className="h-2 bg-secondary rounded-full cursor-pointer relative"
-            onClick={handleProgressClick}
-          >
-            <div 
-              className="absolute top-0 left-0 h-full bg-primary rounded-full"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          
-          {/* Time display */}
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
-          </div>
-        </div>
-      )}
-      
       <div className="flex flex-col space-y-2">
         <div className="flex items-center gap-2">
           <Button onClick={togglePlay} className="flex-1">
@@ -179,10 +88,6 @@ const VideoTab = ({ videoUrl }: { videoUrl?: string }) => {
                 Play Full Interview
               </>
             )}
-          </Button>
-          <Button variant="outline" onClick={restartVideo} disabled={!videoUrl}>
-            <RotateCcw className="h-4 w-4 mr-1" />
-            Restart
           </Button>
           <Button variant="outline" onClick={handleDownload} disabled={!videoUrl}>
             <Download className="h-4 w-4 mr-1" />
