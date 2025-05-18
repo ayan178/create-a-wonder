@@ -1,3 +1,4 @@
+
 import { OpenAIService } from "@/services/OpenAIService";
 import { TextToSpeechOptions } from "@/services/OpenAIServiceTypes";
 import { toast } from "@/hooks/use-toast";
@@ -6,12 +7,21 @@ const openAIService = new OpenAIService();
 
 // Global variable to track speaking state
 let isSpeaking = false;
+// New global variable to track current speech text
+let currentSpeechText = "";
 
 /**
  * Check if AI is currently speaking
  */
 export const getIsSpeaking = (): boolean => {
   return isSpeaking;
+};
+
+/**
+ * Get current speech text being spoken
+ */
+export const getCurrentSpeechText = (): string => {
+  return currentSpeechText;
 };
 
 /**
@@ -30,6 +40,7 @@ export const speakText = async (
   try {
     console.log("Speaking text:", text);
     isSpeaking = true;
+    currentSpeechText = text;
     
     // Calculate approximate speaking duration (5 words per second)
     const wordCount = text.split(/\s+/).length;
@@ -45,6 +56,7 @@ export const speakText = async (
     await new Promise(resolve => setTimeout(resolve, 500));
     
     isSpeaking = false;
+    currentSpeechText = "";
     return Promise.resolve();
   } catch (error) {
     console.error("Error speaking text:", error);
@@ -53,8 +65,10 @@ export const speakText = async (
     console.log("Falling back to browser speech synthesis");
     try {
       isSpeaking = true;
+      currentSpeechText = text;
       await speakWithBrowserSynthesis(text);
       isSpeaking = false;
+      currentSpeechText = "";
       return Promise.resolve();
     } catch (fallbackError) {
       console.error("Fallback speech synthesis failed:", fallbackError);
@@ -64,6 +78,7 @@ export const speakText = async (
         variant: "destructive",
       });
       isSpeaking = false;
+      currentSpeechText = "";
       return Promise.resolve();
     }
   }

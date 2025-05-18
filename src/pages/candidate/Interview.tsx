@@ -1,7 +1,7 @@
+
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import InterviewHeader from "@/components/interview/InterviewHeader";
-import InterviewAvatar from "@/components/interview/InterviewAvatar";
 import VideoFeed from "@/components/interview/VideoFeed";
 import QuestionCard from "@/components/interview/QuestionCard";
 import InterviewTabs from "@/components/interview/InterviewTabs";
@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import EnhancedBackground from "@/components/EnhancedBackground";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ApiKeySetup } from "@/components/interview/ApiKeySetup";
+import HeygenAvatar from "@/components/interview/HeygenAvatar";
 
 const InterviewPage = () => {
   const [backendReady, setBackendReady] = useState<boolean | null>(null);
@@ -40,7 +41,8 @@ const InterviewPage = () => {
     currentCodingQuestion,
     browserSupportsSpeechRecognition,
     isListening,
-    isAISpeaking
+    isAISpeaking,
+    currentAudioText
   } = useInterview(isSystemAudioOn);
 
   const [lastTranscribed, setLastTranscribed] = useState("");
@@ -186,12 +188,13 @@ const InterviewPage = () => {
           >
             <Card className="relative overflow-hidden glass-morphism border-primary/10 h-[calc(100vh-300px)]">
               <CardContent className="p-0 h-full flex flex-col justify-center items-center">
-                <InterviewAvatar
+                <HeygenAvatar
                   isInterviewStarted={isInterviewStarted}
                   currentQuestion={currentQuestion}
                   isSystemAudioOn={isSystemAudioOn}
                   isSpeaking={isAISpeaking}
                   isListening={isListening && !isAISpeaking}
+                  currentAudioText={currentAudioText}
                 />
               </CardContent>
             </Card>
