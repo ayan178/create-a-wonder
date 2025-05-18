@@ -1,6 +1,8 @@
+
 import { OpenAIService } from "@/services/OpenAIService";
 import { TextToSpeechOptions } from "@/services/OpenAIServiceTypes";
 import { toast } from "@/hooks/use-toast";
+import { heygenService } from "@/services/HeygenService";
 
 const openAIService = new OpenAIService();
 
@@ -15,7 +17,7 @@ export const getIsSpeaking = (): boolean => {
 };
 
 /**
- * Speak text using OpenAI TTS
+ * Speak text using OpenAI TTS and coordinate with Heygen avatar
  * @param text Text to speak
  * @param isSystemAudioOn Whether system audio is enabled
  * @param options Options for speech synthesis
@@ -30,6 +32,14 @@ export const speakText = async (
   try {
     console.log("Speaking text:", text);
     isSpeaking = true;
+    
+    // If Heygen is configured, send text to the avatar
+    if (heygenService.isConfigured() && heygenService.getIsStreaming()) {
+      // Send text to Heygen avatar (no need to wait for completion)
+      heygenService.speakText(text).catch(err => {
+        console.error("Heygen avatar speech error:", err);
+      });
+    }
     
     // Calculate approximate speaking duration (5 words per second)
     const wordCount = text.split(/\s+/).length;

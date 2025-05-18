@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { toast } from "@/hooks/use-toast";
 import { videoRecorder } from "@/utils/videoRecording";
 import { speakText } from "@/utils/speechUtils";
+import { heygenService } from "@/services/HeygenService";
 
 /**
  * Custom hook for managing interview actions
@@ -25,6 +26,11 @@ export function useInterviewActions(
       // Stop speech recognition
       stopListening();
       deactivateSpeechRecognition();
+      
+      // Stop Heygen avatar if active
+      if (heygenService.getIsStreaming()) {
+        heygenService.stopStream();
+      }
       
       if (isRecording) {
         // Stop recording and get the blob
