@@ -50,35 +50,35 @@ class AuthService extends BaseApiClient {
   private userKey = 'ai_interview_user';
   
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await this.post<AuthResponse>('/auth/login', credentials);
+    const response = await this.client.post<AuthResponse>('/auth/login', credentials);
     this.saveToken(response.access_token);
     this.saveUser(response.user);
     return response;
   }
   
   async registerCandidate(data: RegisterCandidateData): Promise<AuthResponse> {
-    const response = await this.post<AuthResponse>('/auth/register/candidate', data);
+    const response = await this.client.post<AuthResponse>('/auth/register/candidate', data);
     this.saveToken(response.access_token);
     this.saveUser(response.user);
     return response;
   }
   
   async registerEmployer(data: RegisterEmployerData): Promise<AuthResponse> {
-    const response = await this.post<AuthResponse>('/auth/register/employer', data);
+    const response = await this.client.post<AuthResponse>('/auth/register/employer', data);
     this.saveToken(response.access_token);
     this.saveUser(response.user);
     return response;
   }
   
   async refreshToken(): Promise<{ access_token: string }> {
-    const response = await this.post<{ message: string; access_token: string }>('/auth/refresh', {});
+    const response = await this.client.post<{ message: string; access_token: string }>('/auth/refresh', {});
     this.saveToken(response.access_token);
     return response;
   }
   
   async logout(): Promise<void> {
     try {
-      await this.post('/auth/logout', {});
+      await this.client.post('/auth/logout', {});
     } catch (error) {
       console.error('Error during logout:', error);
     } finally {
@@ -87,7 +87,7 @@ class AuthService extends BaseApiClient {
   }
   
   async getUserProfile(): Promise<User> {
-    const response = await this.get<{ user: User }>('/auth/me');
+    const response = await this.client.get<{ user: User }>('/auth/me');
     this.saveUser(response.user);
     return response.user;
   }
