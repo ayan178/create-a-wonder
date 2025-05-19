@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FiMail, FiLock } from "react-icons/fi";
 import { FaGoogle, FaFacebook } from "react-icons/fa";
-import AnimatedBackground from "@/components/AnimatedBackground";
+import { ModeToggle } from "@/components/ModeToggle";
+import EnhancedBackground from "@/components/EnhancedBackground";
 import { useAuth } from "@/hooks/useAuth";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -56,8 +57,12 @@ const EmployerLogin = () => {
   };
 
   return (
-    <AnimatedBackground intensity="medium">
+    <EnhancedBackground intensity="medium">
       <div className="min-h-screen flex flex-col">
+        <div className="absolute top-8 right-8 z-10">
+          <ModeToggle />
+        </div>
+        
         <Link to="/" className="absolute top-8 left-8 z-10">
           <img 
             src="https://interviewstaging.shiksak.com/storage/customimages/ai-interviewlogo.png" 
@@ -77,11 +82,11 @@ const EmployerLogin = () => {
               <div className="glass-card rounded-xl p-8 shadow-xl">
                 <div className="text-center mb-8">
                   <h1 className="text-2xl font-bold mb-2">Employer Login</h1>
-                  <p className="text-gray-600">Login to access your hiring dashboard</p>
+                  <p className="text-gray-600 dark:text-gray-400">Login to access your hiring dashboard</p>
                 </div>
                 
                 {error && (
-                  <div className="bg-red-50 text-red-800 p-3 rounded-md mb-6 text-sm">
+                  <div className="bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 p-3 rounded-md mb-6 text-sm">
                     {error}
                   </div>
                 )}
@@ -169,9 +174,9 @@ const EmployerLogin = () => {
                 </Form>
                 
                 <div className="mt-6 flex items-center justify-center">
-                  <div className="h-px bg-gray-300 flex-1"></div>
-                  <span className="px-4 text-sm text-gray-500">OR</span>
-                  <div className="h-px bg-gray-300 flex-1"></div>
+                  <div className="h-px bg-gray-300 dark:bg-gray-700 flex-1"></div>
+                  <span className="px-4 text-sm text-gray-500 dark:text-gray-400">OR</span>
+                  <div className="h-px bg-gray-300 dark:bg-gray-700 flex-1"></div>
                 </div>
                 
                 <div className="mt-6 grid grid-cols-2 gap-3">
@@ -185,7 +190,7 @@ const EmployerLogin = () => {
                   </Button>
                 </div>
                 
-                <p className="text-center mt-8 text-sm text-gray-600">
+                <p className="text-center mt-8 text-sm text-gray-600 dark:text-gray-400">
                   Don't have an account?{" "}
                   <Link to="/employer/register" className="text-brand-blue font-medium hover:underline">
                     Register as an employer
@@ -201,22 +206,22 @@ const EmployerLogin = () => {
               className="w-full max-w-md flex items-center justify-center"
             >
               <div className="relative w-64 h-64 md:w-80 md:h-80">
-                <div className="absolute inset-0 rounded-full bg-indigo-100/30 backdrop-blur-md animate-pulse"></div>
+                <div className="absolute inset-0 rounded-full bg-indigo-100/30 dark:bg-indigo-900/20 backdrop-blur-md animate-pulse"></div>
                 <img 
                   src="https://interviewstaging.shiksak.com/storage/customimages/ai-interviewlogo.png" 
                   alt="AI Assistant" 
                   className="absolute inset-0 m-auto w-48 h-48 object-contain"
                 />
                 <div className="absolute -bottom-8 left-0 right-0 text-center">
-                  <p className="text-lg font-semibold text-indigo-600">Your AI Hiring Assistant</p>
-                  <p className="text-sm text-gray-600">Find the best candidates efficiently</p>
+                  <p className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">Your AI Hiring Assistant</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Find the best candidates efficiently</p>
                 </div>
               </div>
             </motion.div>
           </div>
         </div>
       </div>
-    </AnimatedBackground>
+    </EnhancedBackground>
   );
 };
 

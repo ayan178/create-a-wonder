@@ -25,34 +25,45 @@ import {
   SelectTrigger,
   SelectValue 
 } from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
 
 const EmployerRegister = () => {
   const navigate = useNavigate();
+  const { registerEmployer, isLoading } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState({
-    name: "",
-    company: "",
+    first_name: "",
+    last_name: "",
     email: "",
-    companySize: "",
+    company_name: "",
     industry: "",
-    hiringGoals: "",
-    hearAboutUs: "",
+    company_size: "",
     password: "",
     confirmPassword: "",
     agreeToTerms: false
   });
+  
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const steps = [
     {
-      title: "What's your name?",
-      field: "name",
-      placeholder: "Enter your full name",
+      title: "What's your first name?",
+      field: "first_name",
+      placeholder: "Enter your first name",
+      icon: <FiUser className="text-gray-400" />,
+      type: "text",
+    },
+    {
+      title: "What's your last name?",
+      field: "last_name",
+      placeholder: "Enter your last name",
       icon: <FiUser className="text-gray-400" />,
       type: "text",
     },
     {
       title: "What company do you represent?",
-      field: "company",
+      field: "company_name",
       placeholder: "Enter your company name",
       icon: <FiBriefcase className="text-gray-400" />,
       type: "text",
@@ -66,7 +77,7 @@ const EmployerRegister = () => {
     },
     {
       title: "How big is your company?",
-      field: "companySize",
+      field: "company_size",
       placeholder: "Select company size",
       icon: <FiHash className="text-gray-400" />,
       type: "select",
@@ -91,33 +102,6 @@ const EmployerRegister = () => {
         { value: "education", label: "Education" },
         { value: "retail", label: "Retail & E-commerce" },
         { value: "manufacturing", label: "Manufacturing" },
-        { value: "other", label: "Other" }
-      ]
-    },
-    {
-      title: "What are your hiring goals?",
-      field: "hiringGoals",
-      placeholder: "Select your primary goal",
-      icon: <FiInfo className="text-gray-400" />,
-      type: "select",
-      options: [
-        { value: "technical", label: "Hire technical candidates" },
-        { value: "nontechnical", label: "Hire non-technical candidates" },
-        { value: "both", label: "Hire both technical and non-technical candidates" },
-        { value: "improve", label: "Improve hiring process efficiency" }
-      ]
-    },
-    {
-      title: "How did you hear about us?",
-      field: "hearAboutUs",
-      placeholder: "Select an option",
-      icon: <FiInfo className="text-gray-400" />,
-      type: "select",
-      options: [
-        { value: "search", label: "Search engine" },
-        { value: "social", label: "Social media" },
-        { value: "word", label: "Word of mouth" },
-        { value: "event", label: "Event or conference" },
         { value: "other", label: "Other" }
       ]
     },
@@ -154,11 +138,86 @@ const EmployerRegister = () => {
       ...formData,
       [field]: value
     });
+    
+    // Clear error for this field when user types
+    if (errors[field]) {
+      setErrors({
+        ...errors,
+        [field]: ""
+      });
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateFormData = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.first_name.trim()) {
+      newErrors.first_name = "First name is required";
+    }
+    
+    if (!formData.last_name.trim()) {
+      newErrors.last_name = "Last name is required";
+    }
+    
+    if (!formData.company_name.trim()) {
+      newErrors.company_name = "Company name is required";
+    }
+    
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Email is invalid";
+    }
+    
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
+    }
+    
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+    
+    if (!formData.agreeToTerms) {
+      newErrors.agreeToTerms = "You must agree to the terms and conditions";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/employer/dashboard');
+    
+    if (!validateFormData()) {
+      toast({
+        title: "Form validation error",
+        description: "Please fix the errors before submitting",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      await registerEmployer({
+        email: formData.email,
+        password: formData.password,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        company_name: formData.company_name,
+        industry: formData.industry,
+        company_size: formData.company_size
+      });
+      // Navigation is handled in the useAuth hook
+    } catch (error: any) {
+      console.error("Registration failed:", error);
+      toast({
+        title: "Registration failed",
+        description: error.message || "An error occurred during registration",
+        variant: "destructive"
+      });
+    }
   };
 
   const isCurrentFieldValid = () => {
@@ -285,6 +344,9 @@ const EmployerRegister = () => {
                       >
                         <div className="space-y-2">
                           {renderInput(steps[currentStep])}
+                          {errors[steps[currentStep].field] && (
+                            <p className="text-xs text-red-500 mt-1">{errors[steps[currentStep].field]}</p>
+                          )}
                         </div>
                         
                         <div className="flex justify-end">
@@ -320,12 +382,16 @@ const EmployerRegister = () => {
                           <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Your Information</h3>
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <p className="text-sm font-medium">Name</p>
-                              <p className="text-sm">{formData.name}</p>
+                              <p className="text-sm font-medium">First Name</p>
+                              <p className="text-sm">{formData.first_name}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">Last Name</p>
+                              <p className="text-sm">{formData.last_name}</p>
                             </div>
                             <div>
                               <p className="text-sm font-medium">Company</p>
-                              <p className="text-sm">{formData.company}</p>
+                              <p className="text-sm">{formData.company_name}</p>
                             </div>
                             <div className="col-span-2">
                               <p className="text-sm font-medium">Email</p>
@@ -333,7 +399,7 @@ const EmployerRegister = () => {
                             </div>
                             <div>
                               <p className="text-sm font-medium">Company Size</p>
-                              <p className="text-sm">{formData.companySize}</p>
+                              <p className="text-sm">{formData.company_size}</p>
                             </div>
                             <div>
                               <p className="text-sm font-medium">Industry</p>
@@ -363,6 +429,9 @@ const EmployerRegister = () => {
                             <Link to="/terms" className="text-brand-blue hover:underline">Terms of Service</Link> and{" "}
                             <Link to="/privacy" className="text-brand-blue hover:underline">Privacy Policy</Link>.
                           </p>
+                          {errors.agreeToTerms && (
+                            <p className="text-xs text-red-500 mt-1">{errors.agreeToTerms}</p>
+                          )}
                         </div>
                       </div>
                       
@@ -377,10 +446,10 @@ const EmployerRegister = () => {
                         
                         <Button 
                           onClick={handleSubmit}
-                          disabled={!formData.agreeToTerms}
+                          disabled={!formData.agreeToTerms || isLoading}
                           className="bg-brand-purple hover:bg-indigo-600"
                         >
-                          Create Employer Account
+                          {isLoading ? "Creating Account..." : "Create Employer Account"}
                         </Button>
                       </div>
                     </motion.div>
