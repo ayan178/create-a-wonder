@@ -1,8 +1,8 @@
 
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { toast } from "@/hooks/use-toast";
 import { videoRecorder } from "@/utils/videoRecording";
-import { speakText, getCurrentSpeechText } from "@/utils/speechUtils";
+import { speakText } from "@/utils/speechUtils";
 
 /**
  * Custom hook for managing interview actions
@@ -17,9 +17,6 @@ export function useInterviewActions(
   stopListening: () => void,
   deactivateSpeechRecognition: () => void
 ) {
-  // State to track current audio text for avatar
-  const [currentSpeakingText, setCurrentSpeakingText] = useState<string>("");
-
   /**
    * End the interview and save recording
    */
@@ -72,33 +69,18 @@ export function useInterviewActions(
     return new Promise<void>((resolve) => {
       setTimeout(() => {
         // Simulate AI speaking the question
-        setCurrentSpeakingText(questions[0]);
-        
         speakText(questions[0], isSystemAudioOn)
-          .then(() => {
-            setCurrentSpeakingText("");
-            resolve();
-          })
+          .then(() => resolve())
           .catch(err => {
             console.error("Error during AI speech:", err);
-            setCurrentSpeakingText("");
             resolve(); // Still resolve even if speech fails
           });
       }, 500);
     });
   }, [questions, isSystemAudioOn]);
-
-  /**
-   * Get current speaking text for avatar
-   */
-  const getCurrentAudioText = useCallback(() => {
-    // If we have locally tracked text, use that, otherwise check the global state
-    return currentSpeakingText || getCurrentSpeechText();
-  }, [currentSpeakingText]);
   
   return {
     endInterview,
-    speakFirstQuestion,
-    currentAudioText: getCurrentAudioText()
+    speakFirstQuestion
   };
 }

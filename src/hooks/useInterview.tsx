@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { videoRecorder } from "@/utils/videoRecording";
 import { toast } from "@/hooks/use-toast";
@@ -110,8 +109,7 @@ const useInterview = (isSystemAudioOn: boolean) => {
   // Use interview actions hook
   const {
     endInterview,
-    speakFirstQuestion,
-    currentAudioText
+    speakFirstQuestion
   } = useInterviewActions(
     isSystemAudioOn,
     questions,
@@ -211,8 +209,7 @@ const useInterview = (isSystemAudioOn: boolean) => {
     isListening,
     isAISpeaking,
     browserSupportsSpeechRecognition,
-    hasMicPermission,
-    currentAudioText
+    hasMicPermission
   };
 };
 

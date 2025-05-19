@@ -14,7 +14,6 @@ from routes.transcription import transcription_routes
 from routes.response_generation import response_routes
 from routes.text_to_speech import tts_routes
 from routes.auth import auth_routes
-from routes.avatar import avatar_routes
 
 # Load environment variables from .env file (if available)
 load_dotenv()
@@ -30,7 +29,6 @@ app.register_blueprint(auth_routes)
 app.register_blueprint(transcription_routes)
 app.register_blueprint(response_routes)
 app.register_blueprint(tts_routes)
-app.register_blueprint(avatar_routes)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
