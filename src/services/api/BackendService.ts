@@ -6,17 +6,15 @@
 
 import { BACKEND_CONFIG } from "@/config/backendConfig";
 import { BaseApiClient } from './BaseApiClient';
-import { BackendError } from './BackendError';
 
 /**
  * Service for making requests to the Flask backend
  */
 export class BackendService extends BaseApiClient {
-  constructor(config = BACKEND_CONFIG) {
+  constructor() {
     super(
-      config.baseUrl,
-      config.debug,
-      config.retry
+      BACKEND_CONFIG.baseUrl,
+      BACKEND_CONFIG.debug
     );
   }
 
@@ -29,7 +27,9 @@ export class BackendService extends BaseApiClient {
       await this.makeRequest<{status: string}>('health');
       return true;
     } catch (error) {
-      this.log('Backend health check failed:', error);
+      if (this.debug) {
+        console.error('Backend health check failed:', error);
+      }
       return false;
     }
   }
@@ -45,7 +45,9 @@ export class BackendService extends BaseApiClient {
       // Convert blob to base64
       const base64Data = await this.blobToBase64(audioBlob);
       
-      this.log(`Sending audio for transcription, size: ${audioBlob.size}, type: ${audioBlob.type}`);
+      if (this.debug) {
+        console.log(`Sending audio for transcription, size: ${audioBlob.size}, type: ${audioBlob.type}`);
+      }
       
       return this.makeRequest<{ text: string }>("transcribe", "POST", {
         audio_data: base64Data,
@@ -106,7 +108,44 @@ export class BackendService extends BaseApiClient {
     }
   }
   
-  // Removed the private blobToBase64 and base64ToBlob methods as they're inherited from BaseApiClient
+  /**
+   * Helper to convert blob to base64
+   */
+  private async blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove data URL prefix (e.g., "data:audio/webm;base64,")
+        const base64 = result.split(",")[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+  
+  /**
+   * Helper to convert base64 to blob
+   */
+  private base64ToBlob(base64: string, mimeType: string): Blob {
+    const byteCharacters = atob(base64);
+    const byteArrays = [];
+    
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+      const slice = byteCharacters.slice(offset, offset + 512);
+      
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+    
+    return new Blob(byteArrays, { type: mimeType });
+  }
 }
 
 // Export singleton instance for use throughout the app
