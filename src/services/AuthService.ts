@@ -1,3 +1,4 @@
+
 import { BaseApiClient } from './api/BaseApiClient';
 import { BACKEND_CONFIG } from '@/config/backendConfig';
 
@@ -55,10 +56,15 @@ class AuthService extends BaseApiClient {
   }
   
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await this.makeRequest<AuthResponse>('auth/login', 'POST', credentials);
-    this.saveToken(response.access_token);
-    this.saveUser(response.user);
-    return response;
+    try {
+      const response = await this.makeRequest<AuthResponse>('auth/login', 'POST', credentials);
+      this.saveToken(response.access_token);
+      this.saveUser(response.user);
+      return response;
+    } catch (error: any) {
+      console.error('Login failed:', error);
+      throw new Error(error.message || 'Login failed. Please check your credentials.');
+    }
   }
   
   async registerCandidate(data: RegisterCandidateData): Promise<AuthResponse> {
@@ -126,6 +132,20 @@ class AuthService extends BaseApiClient {
   clearAuth(): void {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
+  }
+
+  // Add request interceptor to include auth token
+  protected getHeaders(): Record<string, string> {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    const token = this.getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return headers;
   }
 }
 

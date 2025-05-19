@@ -1,170 +1,92 @@
 
-/**
- * Base API Client with retry and error handling capabilities
- */
-
+import { RequestHelper } from './RequestHelper';
 import { BackendError } from './BackendError';
 
-export interface RetryConfig {
-  maxAttempts: number;
-  initialDelay: number;
-  maxDelay: number;
-  backoffFactor: number;
-}
-
 export class BaseApiClient {
-  private baseUrl: string;
-  private debug: boolean;
-  private retryConfig: RetryConfig;
-  
-  constructor(
-    baseUrl: string,
-    debug: boolean = false,
-    retryConfig: RetryConfig = {
-      maxAttempts: 3,
-      initialDelay: 1000,
-      maxDelay: 5000,
-      backoffFactor: 2
-    }
-  ) {
-    this.baseUrl = baseUrl;
+  protected baseUrl: string;
+  protected debug: boolean;
+  protected requestHelper: RequestHelper;
+
+  constructor(baseUrl: string, debug: boolean = false) {
+    // Make sure baseUrl doesn't end with a slash
+    this.baseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
     this.debug = debug;
-    this.retryConfig = retryConfig;
+    this.requestHelper = new RequestHelper(debug);
   }
 
-  /**
-   * Log messages when debug is enabled
-   */
-  log(...args: any[]): void {
-    if (this.debug) {
-      console.log('[BaseApiClient]', ...args);
-    }
-  }
-
-  /**
-   * Make a request to the API with retry capability
-   * @param endpoint - API endpoint to call
-   * @param method - HTTP method
-   * @param data - Optional request data
-   * @returns Promise with response data
-   */
-  async makeRequest<T>(
-    endpoint: string, 
-    method: string = "GET", 
-    data?: any
+  protected async makeRequest<T>(
+    endpoint: string,
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
+    data?: any,
+    customHeaders?: Record<string, string>
   ): Promise<T> {
-    const url = `${this.baseUrl}/${endpoint}`;
-    let attempt = 1;
-    let delay = this.retryConfig.initialDelay;
-    
-    while (attempt <= this.retryConfig.maxAttempts) {
-      try {
-        this.log(`Attempt ${attempt}/${this.retryConfig.maxAttempts} for ${method} ${endpoint}`);
-        
-        // Check for network connectivity before making the request
-        if (!navigator.onLine) {
-          throw new BackendError("No internet connection available", 0, attempt);
-        }
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-        
-        const response = await fetch(url, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: data ? JSON.stringify(data) : undefined,
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        
-        // Handle different HTTP status codes
-        if (!response.ok) {
-          const errorBody = await response.json().catch(() => ({}));
-          const errorMessage = errorBody.error || `HTTP Error: ${response.status} ${response.statusText}`;
-          
-          // For certain status codes, we don't want to retry
-          if (response.status === 401 || response.status === 403 || response.status === 404) {
-            throw new BackendError(errorMessage, response.status, attempt);
-          }
-          
-          throw new BackendError(errorMessage, response.status, attempt);
-        }
-        
-        return await response.json() as T;
-      } catch (error) {
-        // Handle different error types
-        if (error instanceof BackendError) {
-          // For specific status codes, don't retry
-          if (error.status === 401 || error.status === 403 || error.status === 404) {
-            this.log(`Error ${error.status} won't be retried:`, error.message);
-            throw error;
-          }
-        }
-        
-        // Don't retry if this was our last attempt
-        if (attempt >= this.retryConfig.maxAttempts) {
-          this.log(`All ${this.retryConfig.maxAttempts} attempts failed for ${endpoint}`);
-          if (error instanceof DOMException && error.name === 'AbortError') {
-            throw new BackendError(`Request timeout after 15 seconds for ${endpoint}`);
-          }
-          throw error instanceof BackendError ? error : new BackendError(`Failed to connect to backend: ${error instanceof Error ? error.message : String(error)}`);
-        }
-        
-        // Log the error and prepare for retry
-        this.log(`Attempt ${attempt} failed for ${endpoint}:`, error);
-        
-        // Wait before the next retry with exponential backoff
-        await new Promise(resolve => setTimeout(resolve, delay));
-        
-        // Increase the delay for the next attempt (with maximum limit)
-        delay = Math.min(delay * this.retryConfig.backoffFactor, this.retryConfig.maxDelay);
-        attempt++;
+    try {
+      // Make sure endpoint doesn't start with a slash
+      const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+      const url = `${this.baseUrl}/${cleanEndpoint}`;
+      
+      const headers = {
+        ...this.getHeaders(),
+        ...(customHeaders || {})
+      };
+
+      if (this.debug) {
+        console.log(`[BaseApiClient] Making ${method} request to ${url}`);
+        if (data) console.log('[BaseApiClient] Request data:', data);
       }
+
+      const response = await this.requestHelper.fetchWithRetry(
+        url,
+        {
+          method,
+          headers,
+          body: data ? JSON.stringify(data) : undefined,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ 
+          message: `HTTP error! Status: ${response.status}` 
+        }));
+        
+        throw new BackendError(
+          errorData.error || errorData.message || `Request failed with status ${response.status}`,
+          response.status
+        );
+      }
+
+      const result = await response.json() as T;
+      
+      if (this.debug) {
+        console.log(`[BaseApiClient] Response for ${url}:`, result);
+      }
+
+      return result;
+    } catch (error) {
+      if (this.debug) {
+        console.error(`[BaseApiClient] Error in ${method} request:`, error);
+      }
+      throw error instanceof BackendError 
+        ? error 
+        : new BackendError(error instanceof Error ? error.message : 'Unknown error');
     }
-    
-    // This should never be reached due to the throw in the loop above
-    throw new BackendError(`Unexpected error in retry loop for ${endpoint}`);
   }
 
-  /**
-   * Helper to convert blob to base64
-   */
-  async blobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        // Remove data URL prefix (e.g., "data:audio/webm;base64,")
-        const base64 = result.split(",")[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+  protected getHeaders(): Record<string, string> {
+    return {
+      'Content-Type': 'application/json',
+    };
   }
-  
-  /**
-   * Helper to convert base64 to blob
-   */
-  base64ToBlob(base64: string, mimeType: string): Blob {
-    const byteCharacters = atob(base64);
-    const byteArrays = [];
-    
-    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-      const slice = byteCharacters.slice(offset, offset + 512);
-      
-      const byteNumbers = new Array(slice.length);
-      for (let i = 0; i < slice.length; i++) {
-        byteNumbers[i] = slice.charCodeAt(i);
+
+  async isBackendAvailable(): Promise<boolean> {
+    try {
+      await this.makeRequest('health', 'GET');
+      return true;
+    } catch (error) {
+      if (this.debug) {
+        console.error('[BaseApiClient] Backend health check failed:', error);
       }
-      
-      const byteArray = new Uint8Array(byteNumbers);
-      byteArrays.push(byteArray);
+      return false;
     }
-    
-    return new Blob(byteArrays, { type: mimeType });
   }
 }

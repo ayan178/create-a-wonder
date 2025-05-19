@@ -1,13 +1,61 @@
 
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FiUser, FiLock } from "react-icons/fi";
+import { useAuth } from "@/hooks/useAuth";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { toast } from "@/hooks/use-toast";
+
+const loginSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email address." }),
+  password: z.string().min(1, { message: "Password is required." }),
+  remember: z.boolean().default(false),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login = () => {
+  const { login, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
+  
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      remember: false,
+    },
+  });
+
+  const onSubmit = async (values: LoginFormValues) => {
+    try {
+      setError(null);
+      await login({
+        email: values.email,
+        password: values.password,
+      });
+      // Navigation is handled in the useAuth hook
+    } catch (err: any) {
+      setError(err.message || "Login failed. Please check your credentials.");
+      console.error("Login error:", err);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <div className="absolute inset-0 animated-gradient-background"></div>
@@ -34,56 +82,99 @@ const Login = () => {
               <p className="text-gray-600">Log in to your account to continue</p>
             </div>
             
-            <form className="space-y-6">
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">Email Address</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-3">
-                    <FiUser className="text-gray-400" />
-                  </div>
-                  <Input 
-                    id="email"
-                    type="email" 
-                    placeholder="Enter your email"
-                    className="pl-10"
-                  />
-                </div>
+            {error && (
+              <div className="bg-red-50 text-red-800 p-3 rounded-md mb-6 text-sm">
+                {error}
               </div>
-              
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="password" className="text-sm font-medium">Password</label>
-                  <Link to="/forgot-password" className="text-sm text-brand-blue hover:underline">
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-3">
-                    <FiLock className="text-gray-400" />
-                  </div>
-                  <Input 
-                    id="password"
-                    type="password" 
-                    placeholder="Enter your password"
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox id="remember" />
-                <label
-                  htmlFor="remember"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            )}
+            
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email Address</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 flex items-center pl-3">
+                            <FiUser className="text-gray-400" />
+                          </div>
+                          <Input 
+                            id="email"
+                            type="email" 
+                            placeholder="Enter your email"
+                            className="pl-10"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Password</FormLabel>
+                        <Link to="/forgot-password" className="text-sm text-brand-blue hover:underline">
+                          Forgot password?
+                        </Link>
+                      </div>
+                      <FormControl>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 flex items-center pl-3">
+                            <FiLock className="text-gray-400" />
+                          </div>
+                          <Input 
+                            id="password"
+                            type="password" 
+                            placeholder="Enter your password"
+                            className="pl-10"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="remember"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox 
+                          id="remember" 
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel htmlFor="remember">
+                          Remember me
+                        </FormLabel>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                
+                <Button 
+                  type="submit" 
+                  className="w-full bg-brand-purple hover:bg-indigo-600"
+                  disabled={isLoading}
                 >
-                  Remember me
-                </label>
-              </div>
-              
-              <Button type="submit" className="w-full bg-brand-purple hover:bg-indigo-600">
-                Sign In
-              </Button>
-            </form>
+                  {isLoading ? "Signing In..." : "Sign In"}
+                </Button>
+              </form>
+            </Form>
             
             <div className="mt-6 flex items-center justify-center">
               <div className="h-px bg-gray-300 flex-1"></div>
