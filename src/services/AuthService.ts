@@ -1,5 +1,6 @@
 
 import { BaseApiClient } from './api/BaseApiClient';
+import { config } from '@/config/backendConfig';
 
 export type UserType = 'candidate' | 'employer';
 
@@ -49,36 +50,41 @@ class AuthService extends BaseApiClient {
   private tokenKey = 'ai_interview_token';
   private userKey = 'ai_interview_user';
   
+  constructor() {
+    // Initialize the BaseApiClient with the API URL
+    super(config.apiUrl, config.debug);
+  }
+  
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await this.client.post<AuthResponse>('/auth/login', credentials);
+    const response = await this.makeRequest<AuthResponse>('auth/login', 'POST', credentials);
     this.saveToken(response.access_token);
     this.saveUser(response.user);
     return response;
   }
   
   async registerCandidate(data: RegisterCandidateData): Promise<AuthResponse> {
-    const response = await this.client.post<AuthResponse>('/auth/register/candidate', data);
+    const response = await this.makeRequest<AuthResponse>('auth/register/candidate', 'POST', data);
     this.saveToken(response.access_token);
     this.saveUser(response.user);
     return response;
   }
   
   async registerEmployer(data: RegisterEmployerData): Promise<AuthResponse> {
-    const response = await this.client.post<AuthResponse>('/auth/register/employer', data);
+    const response = await this.makeRequest<AuthResponse>('auth/register/employer', 'POST', data);
     this.saveToken(response.access_token);
     this.saveUser(response.user);
     return response;
   }
   
   async refreshToken(): Promise<{ access_token: string }> {
-    const response = await this.client.post<{ message: string; access_token: string }>('/auth/refresh', {});
+    const response = await this.makeRequest<{ message: string; access_token: string }>('auth/refresh', 'POST', {});
     this.saveToken(response.access_token);
     return response;
   }
   
   async logout(): Promise<void> {
     try {
-      await this.client.post('/auth/logout', {});
+      await this.makeRequest('auth/logout', 'POST', {});
     } catch (error) {
       console.error('Error during logout:', error);
     } finally {
@@ -87,7 +93,7 @@ class AuthService extends BaseApiClient {
   }
   
   async getUserProfile(): Promise<User> {
-    const response = await this.client.get<{ user: User }>('/auth/me');
+    const response = await this.makeRequest<{ user: User }>('auth/me', 'GET');
     this.saveUser(response.user);
     return response.user;
   }
