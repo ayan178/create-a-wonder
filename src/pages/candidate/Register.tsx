@@ -1,20 +1,104 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { FiUser, FiMail, FiLock } from "react-icons/fi";
+import { FiUser, FiMail, FiLock, FiPhone } from "react-icons/fi";
 import { ModeToggle } from "@/components/ModeToggle";
 import EnhancedBackground from "@/components/EnhancedBackground";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
 
 const CandidateRegister = () => {
   const navigate = useNavigate();
+  const { registerCandidate, isLoading } = useAuth();
+  const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    job_title: "",
+    password: "",
+    confirmPassword: "",
+    agreeToTerms: false
+  });
+  
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setFormData({
+      ...formData,
+      [name]: type === "checkbox" ? checked : value
+    });
+    
+    // Clear error for this field when user types
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: ""
+      });
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.first_name.trim()) {
+      newErrors.first_name = "First name is required";
+    }
+    
+    if (!formData.last_name.trim()) {
+      newErrors.last_name = "Last name is required";
+    }
+    
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Email is invalid";
+    }
+    
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
+    }
+    
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+    
+    if (!formData.agreeToTerms) {
+      newErrors.agreeToTerms = "You must agree to the terms and conditions";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/candidate/verify-otp');
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    try {
+      await registerCandidate({
+        email: formData.email,
+        password: formData.password,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
+        job_title: formData.job_title
+      });
+      // Navigation is handled in the useAuth hook after successful registration
+    } catch (error) {
+      console.error("Registration failed:", error);
+      // Toast is displayed in the useAuth hook
+    }
   };
 
   return (
@@ -47,19 +131,49 @@ const CandidateRegister = () => {
                 </div>
                 
                 <form className="space-y-6" onSubmit={handleSubmit}>
-                  <div className="space-y-2">
-                    <label htmlFor="name" className="text-sm font-medium">Full Name</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 flex items-center pl-3">
-                        <FiUser className="text-gray-400" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="first_name" className="text-sm font-medium">First Name</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 flex items-center pl-3">
+                          <FiUser className="text-gray-400" />
+                        </div>
+                        <Input 
+                          id="first_name"
+                          name="first_name"
+                          type="text" 
+                          placeholder="First name"
+                          className="pl-10"
+                          value={formData.first_name}
+                          onChange={handleChange}
+                          required
+                        />
                       </div>
-                      <Input 
-                        id="name"
-                        type="text" 
-                        placeholder="Enter your full name"
-                        className="pl-10"
-                        required
-                      />
+                      {errors.first_name && (
+                        <p className="text-xs text-red-500 mt-1">{errors.first_name}</p>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="last_name" className="text-sm font-medium">Last Name</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 flex items-center pl-3">
+                          <FiUser className="text-gray-400" />
+                        </div>
+                        <Input 
+                          id="last_name"
+                          name="last_name"
+                          type="text" 
+                          placeholder="Last name"
+                          className="pl-10"
+                          value={formData.last_name}
+                          onChange={handleChange}
+                          required
+                        />
+                      </div>
+                      {errors.last_name && (
+                        <p className="text-xs text-red-500 mt-1">{errors.last_name}</p>
+                      )}
                     </div>
                   </div>
 
@@ -71,10 +185,52 @@ const CandidateRegister = () => {
                       </div>
                       <Input 
                         id="email"
+                        name="email"
                         type="email" 
                         placeholder="Enter your email"
                         className="pl-10"
+                        value={formData.email}
+                        onChange={handleChange}
                         required
+                      />
+                    </div>
+                    {errors.email && (
+                      <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="phone" className="text-sm font-medium">Phone Number (Optional)</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-3">
+                        <FiPhone className="text-gray-400" />
+                      </div>
+                      <Input 
+                        id="phone"
+                        name="phone"
+                        type="tel" 
+                        placeholder="Enter your phone number"
+                        className="pl-10"
+                        value={formData.phone}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="job_title" className="text-sm font-medium">Current Job Title (Optional)</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-3">
+                        <FiUser className="text-gray-400" />
+                      </div>
+                      <Input 
+                        id="job_title"
+                        name="job_title"
+                        type="text" 
+                        placeholder="Enter your job title"
+                        className="pl-10"
+                        value={formData.job_title}
+                        onChange={handleChange}
                       />
                     </div>
                   </div>
@@ -87,35 +243,64 @@ const CandidateRegister = () => {
                       </div>
                       <Input 
                         id="password"
+                        name="password"
                         type="password" 
                         placeholder="Create a password"
                         className="pl-10"
+                        value={formData.password}
+                        onChange={handleChange}
                         required
                       />
                     </div>
+                    {errors.password && (
+                      <p className="text-xs text-red-500 mt-1">{errors.password}</p>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
-                    <label htmlFor="confirm-password" className="text-sm font-medium">Confirm Password</label>
+                    <label htmlFor="confirmPassword" className="text-sm font-medium">Confirm Password</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 flex items-center pl-3">
                         <FiLock className="text-gray-400" />
                       </div>
                       <Input 
-                        id="confirm-password"
+                        id="confirmPassword"
+                        name="confirmPassword"
                         type="password" 
                         placeholder="Confirm your password"
                         className="pl-10"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
                         required
                       />
                     </div>
+                    {errors.confirmPassword && (
+                      <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>
+                    )}
                   </div>
                   
                   <div className="flex items-start space-x-2">
-                    <Checkbox id="terms" className="mt-1" required />
+                    <Checkbox 
+                      id="agreeToTerms" 
+                      name="agreeToTerms"
+                      checked={formData.agreeToTerms}
+                      onCheckedChange={(checked) => {
+                        setFormData({
+                          ...formData,
+                          agreeToTerms: checked === true
+                        });
+                        if (errors.agreeToTerms) {
+                          setErrors({
+                            ...errors,
+                            agreeToTerms: ""
+                          });
+                        }
+                      }}
+                      className="mt-1" 
+                    />
                     <div>
                       <label
-                        htmlFor="terms"
+                        htmlFor="agreeToTerms"
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
                         I agree to the terms and conditions
@@ -125,11 +310,18 @@ const CandidateRegister = () => {
                         <Link to="/terms" className="text-brand-blue hover:underline">Terms of Service</Link> and{" "}
                         <Link to="/privacy" className="text-brand-blue hover:underline">Privacy Policy</Link>.
                       </p>
+                      {errors.agreeToTerms && (
+                        <p className="text-xs text-red-500 mt-1">{errors.agreeToTerms}</p>
+                      )}
                     </div>
                   </div>
                   
-                  <Button type="submit" className="w-full bg-brand-purple hover:bg-indigo-600">
-                    Register
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-brand-purple hover:bg-indigo-600"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Registering..." : "Register"}
                   </Button>
                 </form>
                 
