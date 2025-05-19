@@ -1,6 +1,5 @@
-
 import { BaseApiClient } from './api/BaseApiClient';
-import { config } from '@/config/backendConfig';
+import { BACKEND_CONFIG } from '@/config/backendConfig';
 
 export type UserType = 'candidate' | 'employer';
 
@@ -52,7 +51,7 @@ class AuthService extends BaseApiClient {
   
   constructor() {
     // Initialize the BaseApiClient with the API URL
-    super(config.apiUrl, config.debug);
+    super(BACKEND_CONFIG.baseUrl, BACKEND_CONFIG.debug);
   }
   
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
